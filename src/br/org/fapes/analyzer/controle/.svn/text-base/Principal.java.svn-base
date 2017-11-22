@@ -1,0 +1,530 @@
+package br.org.fapes.ftpibm.controle;
+
+import br.org.fapes.ftpibm.comum.util.Opcao;
+import br.org.fapes.ftpibm.comum.util.Propriedades;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JFrame;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.event.DocumentEvent;
+import org.jvnet.substance.skin.SubstanceOfficeSilver2007LookAndFeel;
+import br.org.fapes.ftpibm.visao.JanelaPrincipal;
+import java.awt.Color;
+import java.awt.Toolkit;
+import java.awt.event.FocusAdapter;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
+import java.util.Properties;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.PlainDocument;
+
+/**
+ *
+ * @author ancos
+ */
+public class Principal {
+
+    private static JanelaPrincipal dialogo;
+    private static File arquivoLocal;
+    private static Opcao opcao;
+    private static int sobrescreve;
+    static Properties properties;
+    static String profile;
+
+    public static void main(String[] args) {
+
+        profile = System.getProperty("user.home");
+
+        // Faz o splash aparecer na tela
+        //Splash.getInstance().openSplash();
+
+        try {
+            UIManager.setLookAndFeel(new SubstanceOfficeSilver2007LookAndFeel());
+
+            properties =
+                    new Properties();
+
+            // Tenta ler o arquivo de propriedades.
+            try {
+                properties.load(new FileInputStream(profile + "\\ftp-ibm.properties"));
+            } catch (IOException e) {
+                // Se não exsitir, cria um arquivo com a propriedade caminho=C:\
+                try {
+                    //properties.store(new FileOutputStream("./diops.properties"), "## último caminho acessado na aplicação ##");
+                    properties.store(new FileOutputStream(profile + "\\ftp-ibm.properties"), "## último caminho acessado na aplicação ##");
+                    properties.load(new FileInputStream(profile + "\\ftp-ibm.properties"));
+                    properties.setProperty("caminho", "C://");
+                    properties.store(new FileOutputStream(profile + "\\ftp-ibm.properties"), "## último caminho acessado na aplicação ##");
+                } catch (IOException ex) {
+                }
+            }
+
+        } catch (UnsupportedLookAndFeelException ex) {
+            ex.printStackTrace();
+        }
+
+        dialogo = new JanelaPrincipal(new JFrame(), true);
+
+        dialogo.getBtnLocalizarArquivo().addActionListener(new ActionListener() {
+
+            public void actionPerformed(final ActionEvent e) {
+                selecionarArquivo();
+            }
+        });
+
+        dialogo.getTxtArquivoLocal().addFocusListener(new FocusAdapter() {
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                String arquivo = dialogo.getTxtArquivoLocal().getText();
+                if (!arquivo.equals("")) {
+                    arquivoLocal = new File(arquivo);
+                    prepararTela();
+
+                }
+
+
+            }
+        });
+
+        PlainDocument doc = (PlainDocument) dialogo.getTxtArquivoLocal().getDocument();
+        doc.addDocumentListener(new DocumentListener() {
+
+            public void insertUpdate(DocumentEvent e) {
+                String arquivo = dialogo.getTxtArquivoLocal().getText();
+                if (!arquivo.equals("")) {
+                    arquivoLocal = new File(arquivo);
+                    prepararTela();
+                }
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                String arquivo = dialogo.getTxtArquivoLocal().getText();
+                if (!arquivo.equals("")) {
+                    arquivoLocal = new File(arquivo);
+                    prepararTela();
+                }
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                //System.out.println("Updated");
+            }
+        });
+
+        dialogo.getLblEnviarMicro().addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mouseClicked(final MouseEvent me) {
+                if (dialogo.getLblEnviarMicro().isEnabled()) {
+                    opcao = Opcao.ENVIAR_MICRO;
+                    if (validarCampos() && sobrescreve != 1) {
+                        transmitir();
+                    }
+                }
+            }
+        });
+
+        dialogo.getLblEnviarIbm().addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mouseClicked(final MouseEvent me) {
+                if (dialogo.getLblEnviarIbm().isEnabled()) {
+                    opcao = Opcao.ENVIAR_IBM;
+                    if (validarCampos()) {
+                        transmitir();
+                    }
+                }
+            }
+        });
+
+        dialogo.getTxtArquivoIBM().addKeyListener(new KeyAdapter() {
+
+            @Override
+            public void keyTyped(KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!(Character.isDigit(c) ||
+                        Character.isLetter(c) ||
+                        c == KeyEvent.VK_PERIOD ||
+                        c == KeyEvent.VK_BACK_SPACE ||
+                        c == '(' ||
+                        c == ')')) {
+                    Toolkit.getDefaultToolkit().beep();
+                    evt.consume();
+                }
+
+            }
+        });
+
+        dialogo.getTxtRegistro().addKeyListener(new KeyAdapter() {
+
+            @Override
+            @SuppressWarnings("static-access")
+            public void keyTyped(KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!(Character.isDigit(c) || (c == KeyEvent.VK_DELETE) || (c == KeyEvent.VK_BACK_SPACE))) {
+                    Toolkit.getDefaultToolkit().beep();
+                    evt.consume();
+                }
+
+            }
+        });
+
+        dialogo.getTxtRegistro().addFocusListener(new FocusAdapter() {
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                try {
+                    Integer.parseInt(dialogo.getTxtRegistro().getText());
+                    calcularBlocoTrilha();
+
+                } catch (NumberFormatException nfe) {
+                    JOptionPane.showMessageDialog(null, "valor de registro inválido.", "ERRO", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        limparCampos(0, 0, 0, 0, 0);
+        dialogo.setVisible(true);
+
+    }
+
+    private static void calcularBlocoTrilha() {
+
+        BigDecimal bloco = new BigDecimal(String.valueOf(27998), new MathContext(100)).divide(new BigDecimal(dialogo.getTxtRegistro().getText(), new MathContext(100)), RoundingMode.HALF_UP);
+        bloco =
+                bloco.multiply(new BigDecimal(dialogo.getTxtRegistro().getText()));
+
+        BigDecimal trilha = new BigDecimal(String.valueOf(arquivoLocal.length()), new MathContext(100)).divide(new BigDecimal(String.valueOf(56000), new MathContext(100)), RoundingMode.HALF_UP);
+        trilha =
+                trilha.add(new BigDecimal(1));
+
+        dialogo.getTxtBloco().setText(bloco.toBigInteger().toString());
+        dialogo.getTxtTrilha().setText(trilha.toBigInteger().toString());
+    }
+
+    private static void habilitarBotoes(boolean lblMicro, boolean lblIbm) {
+        dialogo.getLblEnviarMicro().setEnabled(lblMicro);
+        dialogo.getLblEnviarIbm().setEnabled(lblIbm);
+    }
+
+    private static void habilitarCampos(boolean txtMicro, boolean txtIbm, boolean txtRegistro) {
+        dialogo.getTxtArquivoLocal().setEnabled(txtMicro);
+        dialogo.getTxtArquivoIBM().setEnabled(txtIbm);
+        dialogo.getTxtRegistro().setEnabled(txtRegistro);
+    }
+
+    private static void lerArquivo() {
+
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(arquivoLocal));
+        } catch (FileNotFoundException ex) {
+            ex.printStackTrace();
+        }
+
+        String s = null;
+        int maiorLinha = 0;
+
+        try {
+            while ((s = reader.readLine()) != null) {
+                if (s.length() > maiorLinha) {
+                    maiorLinha = s.length();
+                }
+
+            }
+            reader.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        if (arquivoLocal.length() == 0) {
+            habilitarBotoes(true, false);
+            habilitarCampos(true, true, false);
+        } else {
+            dialogo.getTxtRegistro().setText(String.valueOf(maiorLinha));
+            calcularBlocoTrilha();
+
+        }
+
+
+
+        dialogo.getTxtArquivoIBM().requestFocus();
+    }
+
+    private static void limparCampos(int local, int ibm, int registro, int bloco, int trilha) {
+
+        if (local == 0) {
+            dialogo.getTxtArquivoLocal().setText("");
+        }
+
+        if (ibm == 0) {
+            dialogo.getTxtArquivoIBM().setText("");
+        }
+
+        if (registro == 0) {
+            dialogo.getTxtRegistro().setText("");
+        }
+
+        if (bloco == 0) {
+            dialogo.getTxtBloco().setText("");
+        }
+
+        if (trilha == 0) {
+            dialogo.getTxtTrilha().setText("");
+        }
+
+        habilitarBotoes(false, false);
+        habilitarCampos(true, false, false);
+        dialogo.getTxtAreaInfo().setDisabledTextColor(new Color(102, 255, 51));
+
+    }
+
+    private static void prepararArquivoBatch(final File file) {
+
+        try {
+            PrintWriter batch = new PrintWriter(new FileWriter(file));
+            //as formas de acesso ao servidor mainframe são bndes.bndes.net ou através do IP 10.20.0.19
+            //batch.println("open bndes.bndes.net");
+            batch.println("open bndes.bndes.net");
+            //batch.println(Propriedades.getPropriedade("usuario"));
+            batch.println("ftpfap");
+            //batch.println(Propriedades.getPropriedade("senha"));
+            batch.println("fap2007");
+            batch.println("ascii");
+            batch.println("cd ..");
+            if (opcao.equals(opcao.ENVIAR_MICRO)) {
+                batch.print("get \"" + dialogo.getTxtArquivoIBM().getText());
+                batch.print("\" \"");
+                batch.println(dialogo.getTxtArquivoLocal().getText().toUpperCase() + "\"");
+            } else if (opcao.equals(opcao.ENVIAR_IBM)) {
+                batch.println("del " + dialogo.getTxtArquivoIBM().getText());
+                batch.print("quote site lr=");
+                batch.print(dialogo.getTxtRegistro().getText());
+                batch.print(" blk=");
+                batch.print(dialogo.getTxtBloco().getText());
+                batch.print(" sec=");
+                batch.println(dialogo.getTxtTrilha().getText());
+                batch.print("put \"");
+                batch.print(dialogo.getTxtArquivoLocal().getText().toUpperCase() + "\"");
+                batch.print(" ");
+                batch.println(dialogo.getTxtArquivoIBM().getText());
+            }
+            batch.println("bye");
+            batch.close();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(null, "Ocorreu um erro na leitura do arquivo " + file.getAbsolutePath(), "ERRO", JOptionPane.ERROR_MESSAGE);
+            Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private static void prepararTela() {
+        if (!arquivoLocal.exists()) {
+            try {
+                arquivoLocal.createNewFile();
+                habilitarBotoes(true, false);
+                habilitarCampos(true, true, false);
+            } catch (IOException ex) {
+                limparCampos(0, 0, 0, 0, 0);
+                Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            habilitarBotoes(true, true);
+            habilitarCampos(true, true, true);
+            lerArquivo();
+        }
+    }
+
+    private static void selecionarArquivo() {
+        File caminho = null;
+        try {
+            properties.load(new FileInputStream(profile + "\\ftp-ibm.properties"));
+            caminho =
+                    new File(properties.getProperty("caminho"));
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(caminho);
+        fc.setDialogTitle("SELECIONAR ARQUIVO");
+        int result = fc.showDialog(null, "OK");
+        if (result == JFileChooser.APPROVE_OPTION) {
+            arquivoLocal = fc.getSelectedFile();
+            dialogo.getTxtArquivoLocal().setText(arquivoLocal.getAbsolutePath());
+            prepararTela();
+        }
+    }
+
+    private static void transmitir() {
+
+//        StringBuilder caminho = new StringBuilder("C:\\Documents and Settings\\");
+//        caminho.append(System.getProperty("user.name"));
+//        caminho.append("\\Meus documentos");
+//        caminho.append("\\ftp-ibm.txt");
+        StringBuilder caminho = new StringBuilder(profile + "\\ftp-ibm.txt");
+
+        final File file = new File(caminho.toString());
+
+        try {
+            file.createNewFile();
+
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(null, "Ocorreu um erro ao criar o arquivo " + file.getAbsolutePath(), "ERRO", JOptionPane.ERROR_MESSAGE);
+        }
+
+        if (file.exists()) {
+            prepararArquivoBatch(file);
+
+            final Runtime runTime = Runtime.getRuntime();
+
+            Runnable r = new Runnable() {
+
+                public void run() {
+                    try {
+
+                        dialogo.getTxtAreaInfo().setText("");
+                        dialogo.getTxtAreaInfo().append("INICIANDO TRANSMISSÃO ...\n");
+
+                        Process proc = runTime.exec("ftp -s:" + "\"" + file.getAbsolutePath() + "\"");
+
+                        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+                        String msgErro = "";
+                        String msgSucesso = "";
+                        dialogo.getTxtAreaInfo().append("CONECTANDO AO SERVIDOR IBM DO BNDES.\n");
+                        String s = null;
+                        while ((s = bufferedReader.readLine()) != null) {
+                            if (!s.equals("")) {
+                                if (s.startsWith("PASS")) {
+                                    msgErro += s +"\n";
+                                } else if (s.startsWith("You must")) {
+                                    msgErro += s +"\n";
+                                } else if (s.startsWith("Not logged")) {
+                                    msgErro += s +"\n";
+                                } else if (s.startsWith("Comando inv")) {
+                                    msgErro += s +"\n";
+                                } else if (s.endsWith("o conectado")) {
+                                    msgErro += s +"\n";
+                                } else {
+                                    msgSucesso += s +"\n";
+                                }
+                            }
+                        }
+                        bufferedReader.close();
+                        runTime.runFinalization();
+                        proc.destroy();
+
+                        if (msgErro.length() > 0) {
+                            System.out.println("msgErro="+msgErro.length());
+                            dialogo.getTxtAreaInfo().append(msgErro);
+                            JOptionPane.showMessageDialog(null, "Erro na transmissão.", "ERRO", JOptionPane.ERROR_MESSAGE);
+
+                        } else if (msgSucesso.length() > 0) {
+                            System.out.println("msgSucesso="+msgSucesso.length());
+                            dialogo.getTxtAreaInfo().append(msgSucesso);
+                            JOptionPane.showMessageDialog(null, "O arquivo foi transmitido.", "FIM DA TRANSMISSÃO", JOptionPane.INFORMATION_MESSAGE);
+                        }
+
+                        limparCampos(1, 1, 1, 1, 1);
+
+                        try {
+                            properties.load(new FileInputStream(profile + "\\ftp-ibm.properties"));
+                            File f = new File(dialogo.getTxtArquivoLocal().getText());
+                            properties.setProperty("caminho", f.getParent());
+                            properties.store(new FileOutputStream(profile + "\\ftp-ibm.properties"), "## último caminho acessado na aplicação ##");
+                        } catch (FileNotFoundException ex) {
+                            Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+                        } catch (IOException ex) {
+                            Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            };
+
+            Thread thread = new Thread(r);
+            thread.start();
+        }
+
+    }
+
+    /**
+     * <P> método responsável por validar os campos da tela, antes da transmissão
+     */
+    private static boolean validarCampos() {
+
+        boolean retorno = true;
+        String erro = "";
+
+        if (dialogo.getTxtArquivoIBM().getText().equals("")) {
+            erro += "Digite o nome do arquivo no IBM.\n";
+            retorno =
+                    false;
+        }
+
+        if (dialogo.getTxtArquivoLocal().getText().equals("")) {
+            erro += "Digite o caminho ou selecione um arquivo no micro local.\n";
+            retorno =
+                    false;
+        } else {
+            arquivoLocal = new File(dialogo.getTxtArquivoLocal().getText());
+            if (arquivoLocal.length() > 0 && opcao == Opcao.ENVIAR_MICRO) {
+                sobrescreve = JOptionPane.showConfirmDialog(null, "Arquivo não está vazio. Confirma sobrescrevê-lo?", "VALIDAÇÃO", JOptionPane.YES_NO_OPTION);
+                if (sobrescreve == 0) {
+                    if (arquivoLocal.delete()) {
+                        try {
+                            //arquivoLocal = new File(dialogo.getTxtArquivoLocal().getText());
+                            arquivoLocal.createNewFile();
+                        } catch (IOException ex) {
+                            Logger.getLogger(Principal.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+
+                }
+            } else if (arquivoLocal.length() == 0 && opcao == Opcao.ENVIAR_IBM) {
+                erro += "Arquivo vazio.\n";
+                retorno =
+                        false;
+            }
+
+        }
+
+        if (arquivoLocal.length() != 0) {
+            if (dialogo.getTxtRegistro().getText().equals("")) {
+                erro += "Digite o valor do registro.\n";
+                retorno =
+                        false;
+            }
+
+        }
+
+        if (retorno == false) {
+            JOptionPane.showMessageDialog(null, erro, "VALIDAÇÃO", JOptionPane.INFORMATION_MESSAGE);
+        }
+
+        return retorno;
+    }
+}

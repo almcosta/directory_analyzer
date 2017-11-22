@@ -1,0 +1,63 @@
+10
+
+dir
+0
+svn://200.150.159.119/ftpibm/codigo-fonte/branches/directory_analyzer
+svn://200.150.159.119/ftpibm
+add
+
+
+
+
+
+has-props
+has-prop-mods
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+07e92df4-62fb-7f49-b3c6-56653ec831c7
+
+build.xml
+file
+
+
+
+add
+
+manifest.mf
+file
+
+
+
+add
+
+nbproject
+dir
+
+
+
+add
+
+src
+dir
+
+
+
+add
+
+test
+dir
+
+
+
+add
+

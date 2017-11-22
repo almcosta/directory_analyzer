@@ -1,0 +1,42 @@
+10
+
+dir
+0
+svn://200.150.159.119/ftpibm/codigo-fonte/branches/directory_analyzer/src/br/org/fapes/analyzer/visao
+svn://200.150.159.119/ftpibm
+add
+
+
+
+
+
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+07e92df4-62fb-7f49-b3c6-56653ec831c7
+
+Janela.form
+file
+
+
+
+add
+
+Janela.java
+file
+
+
+
+add
+
