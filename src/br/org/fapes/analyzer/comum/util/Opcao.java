@@ -4,8 +4,8 @@ package br.org.fapes.analyzer.comum.util;
  *
  * @author ancos
  * this is the second commit
- * third comment
- * 
+ * fourth comment
+ *  * 
  */
 public enum Opcao {
 
@@ -23,4 +23,5 @@ public enum Opcao {
     }
     
 
+    //fourth comment
 }
